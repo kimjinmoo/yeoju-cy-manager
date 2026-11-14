@@ -1,1 +1,5 @@
 #include "ephemeral/Flutter-Generated.xcconfig"
+
+// Release 빌드 시 Dart 코드 난독화 및 디버그 심볼 분리를 기본 적용한다.
+DART_OBFUSCATION=true
+SPLIT_DEBUG_INFO=$(FLUTTER_APPLICATION_PATH)/build/app/outputs/symbols/macos

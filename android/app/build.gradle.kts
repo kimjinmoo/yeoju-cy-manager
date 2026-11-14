@@ -30,6 +30,13 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+            // R8 코드 난독화·최적화 및 미사용 리소스 축소를 명시적으로 활성화한다.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
 
@@ -48,6 +55,24 @@ kotlin {
 
 flutter {
     source = "../.."
+}
+
+// Release 빌드 시 --obfuscate / --split-debug-info 플래그가 생략되어도
+// Dart AOT 코드 난독화와 디버그 심볼 분리가 항상 적용되도록 기본값을 강제한다.
+// (FlutterPlugin이 afterEvaluate에서 task 속성을 초기화한 이후에 적용되도록 projectsEvaluated 사용)
+gradle.projectsEvaluated {
+    tasks.withType(com.flutter.gradle.tasks.FlutterTask::class.java).configureEach {
+        if (buildMode == "release") {
+            dartObfuscation = true
+            if (splitDebugInfo.isNullOrBlank()) {
+                splitDebugInfo = rootProject.layout.buildDirectory
+                    .dir("app/outputs/symbols/android")
+                    .get()
+                    .asFile
+                    .absolutePath
+            }
+        }
+    }
 }
 
 // google-services.json이 추가되면 Firebase Google Services 플러그인을 자동 활성화한다.

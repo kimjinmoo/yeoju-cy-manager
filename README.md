@@ -56,6 +56,21 @@ flutter analyze
 flutter test
 ```
 
+### 릴리즈 빌드 및 코드 난독화
+- **Android**: [build.gradle.kts](android/app/build.gradle.kts) 및 [proguard-rules.pro](android/app/proguard-rules.pro)에 R8 코드 난독화·리소스 축소(`isMinifyEnabled = true`, `isShrinkResources = true`)와 Release 빌드 시 Dart 난독화(`dartObfuscation = true`)가 기본 적용되어 있습니다.
+- **iOS / macOS**: [ios/Flutter/Release.xcconfig](ios/Flutter/Release.xcconfig) 및 [macos/Flutter/Flutter-Release.xcconfig](macos/Flutter/Flutter-Release.xcconfig)에 Release 빌드 시 `DART_OBFUSCATION=true` 및 `SPLIT_DEBUG_INFO`가 기본 적용되어 있습니다.
+- **산출물 및 심볼/매핑 파일**:
+  ```bash
+  # Android App Bundle / APK (Dart 심볼 및 R8 mapping.txt 자동 생성)
+  flutter build appbundle --release
+  flutter build apk --release
+
+  # Windows (CLI 플래그로 난독화 및 심볼 분리 지정)
+  flutter build windows --release --obfuscate --split-debug-info=build/app/outputs/symbols/windows
+  ```
+  - **Android R8 매핑**: `build/app/outputs/mapping/release/mapping.txt` (Google Play Console 업로드용)
+  - **Dart 디버그 심볼**: `build/app/outputs/symbols/<platform>/` (`flutter symbolize`로 난독화된 스택트레이스 복원 시 필요)
+
 ---
 
 ## Google Play 광고 ID(`AD_ID`) 및 Google Analytics 설정
