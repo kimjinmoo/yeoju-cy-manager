@@ -49,3 +49,8 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+// google-services.json이 추가되면 Firebase Google Services 플러그인을 자동 활성화한다.
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+}

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "398163298680",
+    "project_id": "yeoju-cy-manager",
+    "storage_bucket": "yeoju-cy-manager.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:398163298680:android:d1d7f54671dc449380e08d",
+        "android_client_info": {
+          "package_name": "com.grepiu.yeoju_cy_manager"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCQVZuqdfYN1dWMBN1qMc4FOEUV7pNL5Fc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

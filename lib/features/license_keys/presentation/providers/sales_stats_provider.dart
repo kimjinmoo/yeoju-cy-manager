@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/network/api_exception.dart';
+import '../../../../core/sandbox/review_sandbox.dart';
 import '../../data/license_key_repository.dart';
 import '../../domain/license_service_type.dart';
 
@@ -79,14 +80,10 @@ class SalesStatsState {
 
 /// MiniPos 및 간편서명 최근 3개월 판매 통계를 조회·병합하는 Notifier이다.
 class SalesStatsNotifier extends Notifier<SalesStatsState> {
-  bool _bootstrapped = false;
-
   @override
   SalesStatsState build() {
-    if (!_bootstrapped) {
-      _bootstrapped = true;
-      Future.microtask(loadStatistics);
-    }
+    ref.watch(reviewSandboxProvider);
+    Future.microtask(loadStatistics);
     return const SalesStatsState();
   }
 

@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/api_exception.dart';
 import '../../../core/network/dio_client.dart';
+import '../../../core/sandbox/review_sandbox.dart';
+import '../../../core/sandbox/review_sandbox_license_repository.dart';
 import '../domain/license_key_models.dart';
 import '../domain/license_service_type.dart';
 
@@ -329,5 +331,11 @@ class GrepiuLicenseKeyRepository implements LicenseKeyRepository {
 
 /// [LicenseKeyRepository]를 제공하는 Riverpod Provider이다.
 final licenseKeyRepositoryProvider = Provider<LicenseKeyRepository>((ref) {
+  final isSandbox = ref.watch(reviewSandboxProvider);
+  if (isSandbox) {
+    return ReviewSandboxLicenseKeyRepository(
+      ref.watch(reviewSandboxStoreProvider),
+    );
+  }
   return GrepiuLicenseKeyRepository(ref.watch(dioProvider));
 });

@@ -1,0 +1,24 @@
+# Google Play Console / App Store Connect 텍스트 애셋 모음
+
+[앱 이름 (30자 이내)]
+여주자전거여행-관리자
+
+[App Store 부제 (30자 이내)]
+MiniPos·간편서명 시디키 통합 관리
+
+[Google Play 간단한 설명 (80자 이내)]
+여주자전거여행 MiniPos·간편서명 시디키 발급·이력·판매통계 통합 관리 앱입니다.
+
+[App Store 프로모션 텍스트 (170자 이내)]
+MiniPos와 간편서명 시디키 발급, 사용 상태 제어, 변경 이력 추적 및 최근 3개월 판매 통계를 모바일에서 한 번에 관리하세요.
+
+[App Store 키워드 (100자 이내)]
+여주자전거여행,시디키,라이선스,관리자,MiniPos,간편서명,판매통계,포스,키관리
+
+[스토어 심사 팀 안내 메모 (Review Notes)]
+This app is an official license key management tool for Yeoju Bicycle Travel administrators.
+For store review, please use the isolated sandbox test account below (no production data is accessed or modified):
+- ID: test
+- Password: xptmxm1!
+
+After signing in with the review account on the login screen, you can test listing, filtering, issuing demo keys, editing, toggling suspension, resetting device bindings, checking history, and viewing sales statistics in the sandbox environment.

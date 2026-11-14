@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/analytics/analytics_service.dart';
 import '../../../../core/network/api_exception.dart';
+import '../../../../core/sandbox/review_sandbox.dart';
 import '../../data/license_key_repository.dart';
 import '../../domain/license_key_models.dart';
 import '../../domain/license_service_type.dart';
@@ -140,14 +144,10 @@ class LicenseKeyNotifier extends Notifier<LicenseKeyState> {
   /// 대상 서비스 (`miniPos` 또는 `sign`)
   final LicenseServiceType serviceType;
 
-  bool _bootstrapped = false;
-
   @override
   LicenseKeyState build() {
-    if (!_bootstrapped) {
-      _bootstrapped = true;
-      Future.microtask(refreshAll);
-    }
+    ref.watch(reviewSandboxProvider);
+    Future.microtask(refreshAll);
     return const LicenseKeyState();
   }
 
@@ -251,6 +251,20 @@ class LicenseKeyNotifier extends Notifier<LicenseKeyState> {
     await loadKeys();
   }
 
+  void _trackAction(
+    String action, {
+    Map<String, Object>? parameters,
+  }) {
+    if (ref.read(reviewSandboxProvider)) return;
+    unawaited(
+      ref.read(appAnalyticsProvider).logLicenseAction(
+            action: action,
+            service: serviceType.deliveryType,
+            parameters: parameters,
+          ),
+    );
+  }
+
   /// 시디키를 일괄 발급하고 목록을 새로고침한다.
   Future<List<LicenseKeyItem>> issueKeys(
     LicenseKeyCreatePayload payload,
@@ -259,6 +273,13 @@ class LicenseKeyNotifier extends Notifier<LicenseKeyState> {
           serviceType: serviceType,
           payload: payload,
         );
+    _trackAction(
+      'license_key_issue',
+      parameters: {
+        'key_type': payload.keyType.value,
+        'count': created.length,
+      },
+    );
     await refreshAll();
     return created;
   }
@@ -269,16 +290,25 @@ class LicenseKeyNotifier extends Notifier<LicenseKeyState> {
           serviceType: serviceType,
           payload: payload,
         );
+    _trackAction(
+      'license_key_update',
+      parameters: {'key_type': payload.keyType.value},
+    );
     await refreshAll();
   }
 
   /// 키를 사용 중지 또는 정상 재개 처리한다.
   Future<void> toggleReject(LicenseKeyItem item) async {
+    final stop = !item.isStopped;
     await ref.read(licenseKeyRepositoryProvider).updateReject(
           serviceType: serviceType,
           key: item.key,
-          stop: !item.isStopped,
+          stop: stop,
         );
+    _trackAction(
+      'license_key_reject_toggle',
+      parameters: {'action_type': stop ? 'stop' : 'resume'},
+    );
     await refreshAll();
   }
 
@@ -288,6 +318,7 @@ class LicenseKeyNotifier extends Notifier<LicenseKeyState> {
           serviceType: serviceType,
           key: key,
         );
+    _trackAction('license_key_device_init');
     await refreshAll();
   }
 
@@ -297,6 +328,7 @@ class LicenseKeyNotifier extends Notifier<LicenseKeyState> {
           serviceType: serviceType,
           key: key,
         );
+    _trackAction('license_key_delete');
     if (state.page > 0 && state.items.length <= 1) {
       state = state.copyWith(page: state.page - 1);
     }
@@ -310,6 +342,10 @@ class LicenseKeyNotifier extends Notifier<LicenseKeyState> {
       final count = await ref
           .read(licenseKeyRepositoryProvider)
           .expireBatch(serviceType);
+      _trackAction(
+        'license_key_expire_batch',
+        parameters: {'expired_count': count},
+      );
       await refreshAll();
       return count;
     } finally {

@@ -5,6 +5,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/network/dio_client.dart';
+import '../../../core/sandbox/review_sandbox.dart';
 import '../../../core/storage/token_storage.dart';
 import '../domain/auth_user.dart';
 
@@ -199,11 +200,94 @@ class GrepiuAuthRepository implements AuthRepository {
   }
 }
 
+/// 스토어 심사 테스트 계정(`test`)과 실서버 인증(`GrepiuAuthRepository`)을 분리 처리하는 [AuthRepository] 래퍼이다.
+class SandboxAwareAuthRepository implements AuthRepository {
+  /// [SandboxAwareAuthRepository] 인스턴스를 생성한다.
+  SandboxAwareAuthRepository({
+    required this._delegate,
+    required this._tokenStorage,
+    required this._sandboxStore,
+    required this._onSandboxChanged,
+  });
+
+  final AuthRepository _delegate;
+  final TokenStorage _tokenStorage;
+  final ReviewSandboxStore _sandboxStore;
+  final void Function(bool enabled) _onSandboxChanged;
+
+  @override
+  Future<AuthUser> loginWithEmail({
+    required String email,
+    required String password,
+  }) async {
+    if (ReviewSandboxConfig.isReviewId(email)) {
+      if (!ReviewSandboxConfig.isReviewCredentials(
+        id: email,
+        password: password,
+      )) {
+        throw const ApiException(
+          message: '아이디 또는 비밀번호가 올바르지 않습니다.',
+          statusCode: 401,
+        );
+      }
+      _sandboxStore.reset();
+      await _tokenStorage.saveTokens(
+        accessToken: ReviewSandboxConfig.sandboxAccessToken,
+        refreshToken: ReviewSandboxConfig.sandboxRefreshToken,
+      );
+      _onSandboxChanged(true);
+      return ReviewSandboxConfig.reviewUser;
+    }
+
+    _onSandboxChanged(false);
+    return _delegate.loginWithEmail(email: email, password: password);
+  }
+
+  @override
+  Future<AuthUser?> loginWithGoogle() async {
+    _onSandboxChanged(false);
+    return _delegate.loginWithGoogle();
+  }
+
+  @override
+  Future<AuthUser?> restoreSession() async {
+    final accessToken = await _tokenStorage.getAccessToken();
+    if (ReviewSandboxConfig.isSandboxToken(accessToken)) {
+      _sandboxStore.reset();
+      _onSandboxChanged(true);
+      return ReviewSandboxConfig.reviewUser;
+    }
+    _onSandboxChanged(false);
+    return _delegate.restoreSession();
+  }
+
+  @override
+  Future<void> logout() async {
+    final accessToken = await _tokenStorage.getAccessToken();
+    if (ReviewSandboxConfig.isSandboxToken(accessToken)) {
+      await _tokenStorage.clearTokens();
+      _sandboxStore.reset();
+      _onSandboxChanged(false);
+      return;
+    }
+    _onSandboxChanged(false);
+    await _delegate.logout();
+  }
+}
+
 /// [AuthRepository] 인스턴스를 제공하는 Riverpod Provider이다.
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
-  return GrepiuAuthRepository(
+  final tokenStorage = ref.watch(tokenStorageProvider);
+  final realRepo = GrepiuAuthRepository(
     dio: ref.watch(dioProvider),
-    tokenStorage: ref.watch(tokenStorageProvider),
+    tokenStorage: tokenStorage,
     config: ref.watch(appConfigProvider),
+  );
+  return SandboxAwareAuthRepository(
+    delegate: realRepo,
+    tokenStorage: tokenStorage,
+    sandboxStore: ref.watch(reviewSandboxStoreProvider),
+    onSandboxChanged: (enabled) =>
+        ref.read(reviewSandboxProvider.notifier).setEnabled(enabled),
   );
 });

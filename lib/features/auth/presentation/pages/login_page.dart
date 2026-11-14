@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/sandbox/review_sandbox.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../providers/auth_provider.dart';
 
@@ -93,7 +94,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                             ],
                             const SizedBox(height: 20),
                             const Text(
-                              '이메일',
+                              '아이디 또는 이메일',
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w700,
@@ -106,15 +107,21 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                               enabled: !isLoading,
                               keyboardType: TextInputType.emailAddress,
                               textInputAction: TextInputAction.next,
-                              autofillHints: const [AutofillHints.email],
+                              autofillHints: const [
+                                AutofillHints.username,
+                                AutofillHints.email,
+                              ],
                               decoration: const InputDecoration(
                                 hintText: 'admin@grepiu.com',
                                 prefixIcon: Icon(Icons.mail_outline, size: 20),
                               ),
                               validator: (value) {
                                 final v = value?.trim() ?? '';
-                                if (v.isEmpty) return '이메일을 입력해주세요.';
-                                if (!v.contains('@')) return '올바른 이메일 형식을 입력해주세요.';
+                                if (v.isEmpty) return '아이디 또는 이메일을 입력해주세요.';
+                                if (!ReviewSandboxConfig.isReviewId(v) &&
+                                    !v.contains('@')) {
+                                  return '올바른 이메일 형식을 입력해주세요.';
+                                }
                                 return null;
                               },
                             ),

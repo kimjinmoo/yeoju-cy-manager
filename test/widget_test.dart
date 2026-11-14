@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:yeoju_cy_manager/app.dart';
+import 'package:yeoju_cy_manager/core/analytics/analytics_service.dart';
 import 'package:yeoju_cy_manager/core/network/api_exception.dart';
 import 'package:yeoju_cy_manager/core/storage/token_storage.dart';
 import 'package:yeoju_cy_manager/features/auth/data/auth_repository.dart';
@@ -437,4 +438,160 @@ void main() {
     expect(testHeight, saleHeight);
     expect(backToSaleHeight, saleHeight);
   });
+
+  testWidgets('스토어 심사용 test/xptmxm1! 로그인 시 실서버와 격리된 샌드박스 환경으로 동작한다', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          tokenStorageProvider.overrideWithValue(_FakeTokenStorage()),
+        ],
+        child: const YeojuCycleManagerApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // 잘못된 비밀번호 입력 시 오류 메시지 표시
+    await tester.enterText(find.byType(TextFormField).at(0), 'test');
+    await tester.enterText(find.byType(TextFormField).at(1), 'wrongpass');
+    await tester.ensureVisible(find.text('이메일로 로그인'));
+    await tester.tap(find.text('이메일로 로그인'));
+    await tester.pumpAndSettle();
+    expect(find.text('아이디 또는 비밀번호가 올바르지 않습니다.'), findsOneWidget);
+
+    // 심사용 테스트 계정으로 로그인 성공 -> 샌드박스 샘플 데이터 표시
+    await tester.enterText(find.byType(TextFormField).at(1), 'xptmxm1!');
+    await tester.ensureVisible(find.text('이메일로 로그인'));
+    await tester.tap(find.text('이메일로 로그인'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('MiniPos 시디키 관리'), findsOneWidget);
+    expect(find.text('DEMO-MPOS-0001-AAAA'), findsOneWidget);
+
+    // 간편서명 탭에서도 샌드박스 샘플 데이터 표시 확인
+    await tester.tap(find.text('간편서명'));
+    await tester.pumpAndSettle();
+    expect(find.text('DEMO-SIGN-0001-AAAA'), findsOneWidget);
+
+    // 판매통계 탭에서도 최근 30일 목업 통계가 표시되는지 확인
+    await tester.tap(find.text('판매통계'));
+    await tester.pumpAndSettle();
+    expect(find.text('판매 통계 (최근 3개월)'), findsOneWidget);
+    expect(find.text('총 판매'), findsOneWidget);
+  });
+
+  testWidgets('일반 관리자 로그인 및 탭 전환 시 Analytics 이벤트를 기록한다', (tester) async {
+    final fakeAnalytics = _FakeAppAnalytics();
+    final fakeAuth = _FakeAuthRepository()
+      ..emailUser = const AuthUser(
+        email: 'admin@grepiu.com',
+        nickname: '여주관리자',
+        roles: ['ROLE_ADMIN'],
+      );
+    final fakeRepo = _FakeLicenseKeyRepository();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          tokenStorageProvider.overrideWithValue(_FakeTokenStorage()),
+          authRepositoryProvider.overrideWithValue(fakeAuth),
+          licenseKeyRepositoryProvider.overrideWithValue(fakeRepo),
+          appAnalyticsProvider.overrideWithValue(fakeAnalytics),
+        ],
+        child: const YeojuCycleManagerApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextFormField).at(0), 'admin@grepiu.com');
+    await tester.enterText(find.byType(TextFormField).at(1), 'secret123');
+    await tester.ensureVisible(find.text('이메일로 로그인'));
+    await tester.tap(find.text('이메일로 로그인'));
+    await tester.pumpAndSettle();
+
+    expect(fakeAnalytics.events, contains('login:email'));
+
+    await tester.tap(find.text('간편서명'));
+    await tester.pumpAndSettle();
+    expect(fakeAnalytics.events, contains('screen:sign_manage'));
+  });
+
+  testWidgets('심사용 test 로그인 시 Analytics 수집을 비활성화하고 이벤트를 기록하지 않는다', (
+    tester,
+  ) async {
+    final sandboxAnalytics = _FakeAppAnalytics();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          tokenStorageProvider.overrideWithValue(_FakeTokenStorage()),
+          appAnalyticsProvider.overrideWithValue(sandboxAnalytics),
+        ],
+        child: const YeojuCycleManagerApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextFormField).at(0), 'test');
+    await tester.enterText(find.byType(TextFormField).at(1), 'xptmxm1!');
+    await tester.ensureVisible(find.text('이메일로 로그인'));
+    await tester.tap(find.text('이메일로 로그인'));
+    await tester.pumpAndSettle();
+
+    expect(sandboxAnalytics.collectionEnabled, isFalse);
+    expect(sandboxAnalytics.events, isEmpty);
+  });
+}
+
+class _FakeAppAnalytics extends AppAnalytics {
+  final List<String> events = [];
+  bool collectionEnabled = true;
+
+  @override
+  bool get isAvailable => true;
+
+  @override
+  NavigatorObserver? buildNavigatorObserver() => null;
+
+  @override
+  Future<void> setCollectionEnabled(bool enabled) async {
+    collectionEnabled = enabled;
+  }
+
+  @override
+  Future<void> logScreenView({
+    required String screenName,
+    String? screenClass,
+  }) async {
+    if (!collectionEnabled) return;
+    events.add('screen:$screenName');
+  }
+
+  @override
+  Future<void> logLogin({required String method}) async {
+    if (!collectionEnabled) return;
+    events.add('login:$method');
+  }
+
+  @override
+  Future<void> logLoginFailed({required String method}) async {
+    if (!collectionEnabled) return;
+    events.add('login_failed:$method');
+  }
+
+  @override
+  Future<void> logLogout() async {
+    if (!collectionEnabled) return;
+    events.add('logout');
+  }
+
+  @override
+  Future<void> logLicenseAction({
+    required String action,
+    required String service,
+    Map<String, Object>? parameters,
+  }) async {
+    if (!collectionEnabled) return;
+    events.add('action:$action:$service');
+  }
 }

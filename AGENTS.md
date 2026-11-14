@@ -30,6 +30,8 @@
 | `go_router` | `^18.1.4` | 선언적 라우팅 및 인증/권한 리다이렉트 가드 |
 | `flutter_secure_storage` | `^11.2.0` | Access/Refresh Token 및 서버 환경 설정 암호화 저장 |
 | `google_sign_in` | `^7.2.0` | Google 네이티브 로그인 (`idToken` 획득 후 서버 검증 연동) |
+| `firebase_core` | `^5.1.0` | Firebase SDK 코어 초기화 (설정 파일 유무에 따른 안전한 조건부 연동) |
+| `firebase_analytics` | `^13.0.1` | Google Analytics 화면 전환 및 비식별 관리자 이벤트 수집 |
 | `intl` | `^0.20.2` | 날짜 및 숫자 포맷팅 |
 | `share_plus` | `^13.3.1` | 발급 키 및 전달 URL 네이티브 공유 |
 | `flutter_lints` | `^6.0.0` | 정적 분석 및 린트 규칙 (dev) |
@@ -45,6 +47,8 @@ lib/
 ├── main.dart                                  # 앱 엔트리 포인트 및 ProviderScope 초기화
 ├── app.dart                                   # MaterialApp.router 및 전역 테마/라우터 연결
 ├── core/
+│   ├── analytics/
+│   │   └── analytics_service.dart             # Firebase Analytics 초기화 가드, 화면·비식별 이벤트 로깅 서비스
 │   ├── config/
 │   │   └── app_config.dart                    # 서버 환경(prod/local/emulator/custom), Client ID, Web 호스트 설정
 │   ├── network/
@@ -53,6 +57,9 @@ lib/
 │   │   └── dio_client.dart                    # Dio 인스턴스 생성 및 설정
 │   ├── router/
 │   │   └── app_router.dart                    # GoRouter 라우트 정의 및 로그인/권한 가드
+│   ├── sandbox/
+│   │   ├── review_sandbox.dart                # 스토어 심사 계정(test) 격리 샌드박스 상태 및 샘플 저장소
+│   │   └── review_sandbox_license_repository.dart # 심사용 로컬 인메모리 LicenseKeyRepository 구현체
 │   ├── storage/
 │   │   └── token_storage.dart                 # flutter_secure_storage 기반 토큰·서버URL 저장소 추상화
 │   ├── theme/

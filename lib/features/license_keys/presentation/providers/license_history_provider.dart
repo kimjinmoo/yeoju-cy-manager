@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/network/api_exception.dart';
+import '../../../../core/sandbox/review_sandbox.dart';
 import '../../data/license_key_repository.dart';
 import '../../domain/license_key_models.dart';
 import '../../domain/license_service_type.dart';
@@ -110,14 +111,10 @@ class LicenseHistoryNotifier extends Notifier<LicenseHistoryState> {
   /// 대상 서비스
   final LicenseServiceType serviceType;
 
-  bool _bootstrapped = false;
-
   @override
   LicenseHistoryState build() {
-    if (!_bootstrapped) {
-      _bootstrapped = true;
-      Future.microtask(loadHistories);
-    }
+    ref.watch(reviewSandboxProvider);
+    Future.microtask(loadHistories);
     return const LicenseHistoryState(isLoading: true);
   }
 

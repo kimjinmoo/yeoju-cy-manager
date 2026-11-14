@@ -34,6 +34,10 @@ markets/
         ├── 04_issue_sheet.png
         ├── 05_sign_keys.png
         └── 06_sales_stats.png
+└── texts/
+    ├── short_description.txt              # Google Play 간단한 설명 (80자 이내 순수 텍스트)
+    ├── full_description.txt               # Google Play / App Store 자세한 설명 (4,000자 이내)
+    └── store_metadata.txt                 # 앱명, 부제, 프로모션 텍스트, 키워드, 심사 메모 모음
 ```
 
 ---

@@ -8,6 +8,7 @@ import '../../features/auth/presentation/pages/splash_page.dart';
 import '../../features/auth/presentation/pages/unauthorized_page.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/license_keys/presentation/pages/manager_home_page.dart';
+import '../analytics/analytics_service.dart';
 
 /// 앱 내 라우트 경로 상수 정의이다.
 abstract final class AppRoutes {
@@ -37,10 +38,15 @@ class _AuthRouterRefreshNotifier extends ChangeNotifier {
 final appRouterProvider = Provider<GoRouter>((ref) {
   final refreshNotifier = _AuthRouterRefreshNotifier(ref);
   ref.onDispose(refreshNotifier.dispose);
+  final analyticsObserver =
+      ref.read(appAnalyticsProvider).buildNavigatorObserver();
 
   return GoRouter(
     initialLocation: AppRoutes.splash,
     refreshListenable: refreshNotifier,
+    observers: [
+      ?analyticsObserver,
+    ],
     redirect: (context, state) {
       final authState = ref.read(authProvider);
       final location = state.matchedLocation;
@@ -65,6 +71,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     },
     routes: [
       GoRoute(
+        name: 'splash',
         path: AppRoutes.splash,
         pageBuilder: (context, state) => _fadePage(
           state: state,
@@ -72,6 +79,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
+        name: 'login',
         path: AppRoutes.login,
         pageBuilder: (context, state) => _fadePage(
           state: state,
@@ -79,6 +87,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
+        name: 'unauthorized',
         path: AppRoutes.unauthorized,
         pageBuilder: (context, state) => _fadePage(
           state: state,
@@ -86,6 +95,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
+        name: 'home',
         path: AppRoutes.home,
         pageBuilder: (context, state) => _fadePage(
           state: state,

@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/analytics/analytics_service.dart';
 import '../../../../core/config/app_config.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../../../core/network/dio_client.dart';
+import '../../../../core/sandbox/review_sandbox.dart';
 import '../../../../core/storage/token_storage.dart';
 import '../../data/auth_repository.dart';
 import '../../domain/auth_state.dart';
@@ -15,6 +19,11 @@ class AuthNotifier extends Notifier<AuthState> {
   @override
   AuthState build() {
     ref.read(sessionExpiredCallbackProvider).register(_handleSessionExpired);
+    ref.listen<bool>(reviewSandboxProvider, (_, isSandbox) {
+      unawaited(
+        ref.read(appAnalyticsProvider).setCollectionEnabled(!isSandbox),
+      );
+    });
 
     if (!_initialized) {
       _initialized = true;
@@ -66,8 +75,16 @@ class AuthNotifier extends Notifier<AuthState> {
             password: password,
           );
       _applyAuthenticatedUser(user);
+      if (user.hasCycleAdminRole && !ref.read(reviewSandboxProvider)) {
+        unawaited(ref.read(appAnalyticsProvider).logLogin(method: 'email'));
+      }
       return true;
     } catch (error) {
+      if (!ref.read(reviewSandboxProvider)) {
+        unawaited(
+          ref.read(appAnalyticsProvider).logLoginFailed(method: 'email'),
+        );
+      }
       state = state.copyWith(
         isSubmitting: false,
         status: AuthStatus.unauthenticated,
@@ -87,8 +104,14 @@ class AuthNotifier extends Notifier<AuthState> {
         return false;
       }
       _applyAuthenticatedUser(user);
+      if (user.hasCycleAdminRole) {
+        unawaited(ref.read(appAnalyticsProvider).logLogin(method: 'google'));
+      }
       return true;
     } catch (error) {
+      unawaited(
+        ref.read(appAnalyticsProvider).logLoginFailed(method: 'google'),
+      );
       state = state.copyWith(
         isSubmitting: false,
         status: AuthStatus.unauthenticated,
@@ -100,8 +123,12 @@ class AuthNotifier extends Notifier<AuthState> {
 
   /// 로그아웃을 수행하고 로그인 화면으로 전환한다.
   Future<void> logout() async {
+    final wasSandbox = ref.read(reviewSandboxProvider);
     state = state.copyWith(isSubmitting: true, clearError: true);
     await ref.read(authRepositoryProvider).logout();
+    if (!wasSandbox) {
+      unawaited(ref.read(appAnalyticsProvider).logLogout());
+    }
     state = const AuthState(status: AuthStatus.unauthenticated);
   }
 

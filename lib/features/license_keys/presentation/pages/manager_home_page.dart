@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/analytics/analytics_service.dart';
 import '../../../../core/config/app_config.dart';
 import '../../../../core/network/api_exception.dart';
+import '../../../../core/sandbox/review_sandbox.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_feedback.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
@@ -79,6 +83,7 @@ class _ManagerHomePageState extends ConsumerState<ManagerHomePage> {
   Future<void> _openAccountSheet() async {
     final authState = ref.read(authProvider);
     final config = ref.read(appConfigProvider);
+    final isSandbox = ref.read(reviewSandboxProvider);
     final user = authState.user;
 
     await showModalBottomSheet<void>(
@@ -162,7 +167,7 @@ class _ManagerHomePageState extends ConsumerState<ManagerHomePage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        '연결 서버',
+                        '실행 환경',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
@@ -171,7 +176,9 @@ class _ManagerHomePageState extends ConsumerState<ManagerHomePage> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        config.apiBaseUrl,
+                        isSandbox
+                            ? '심사 테스트 샌드박스 (로컬 격리 데이터)'
+                            : config.environment.label,
                         style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
@@ -274,8 +281,21 @@ class _ManagerHomePageState extends ConsumerState<ManagerHomePage> {
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
-        onDestinationSelected: (index) =>
-            setState(() => _selectedIndex = index),
+        onDestinationSelected: (index) {
+          setState(() => _selectedIndex = index);
+          if (!ref.read(reviewSandboxProvider)) {
+            final screenName = switch (index) {
+              0 => 'minipos_manage',
+              1 => 'sign_manage',
+              _ => 'sales_statistics',
+            };
+            unawaited(
+              ref.read(appAnalyticsProvider).logScreenView(
+                    screenName: screenName,
+                  ),
+            );
+          }
+        },
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.vpn_key_outlined),
