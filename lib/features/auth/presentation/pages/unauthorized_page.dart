@@ -91,8 +91,20 @@ class UnauthorizedPage extends ConsumerWidget {
                           onPressed: authState.isSubmitting
                               ? null
                               : () => ref.read(authProvider.notifier).logout(),
-                          icon: const Icon(Icons.logout, size: 18),
-                          label: const Text('다른 계정으로 로그인'),
+                          icon: authState.isSubmitting
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.logout, size: 18),
+                          label: Text(
+                            authState.isSubmitting
+                                ? '로그아웃 중...'
+                                : '다른 계정으로 로그인',
+                          ),
                         ),
                       ),
                     ],

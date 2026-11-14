@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -61,6 +63,7 @@ class _FakeAuthRepository implements AuthRepository {
   AuthUser? googleUser;
   AuthUser? restoredUser;
   Exception? emailError;
+  Completer<void>? logoutCompleter;
 
   @override
   Future<AuthUser> loginWithEmail({
@@ -77,7 +80,11 @@ class _FakeAuthRepository implements AuthRepository {
   Future<AuthUser?> loginWithGoogle() async => googleUser;
 
   @override
-  Future<void> logout() async {}
+  Future<void> logout() async {
+    if (logoutCompleter != null) {
+      await logoutCompleter!.future;
+    }
+  }
 
   @override
   Future<AuthUser?> restoreSession() async => restoredUser;
@@ -540,6 +547,83 @@ void main() {
 
     expect(sandboxAnalytics.collectionEnabled, isFalse);
     expect(sandboxAnalytics.events, isEmpty);
+  });
+
+  testWidgets('관리 화면 로그아웃 진행 중 로딩 오버레이를 표시한 뒤 로그인 화면으로 전환한다', (
+    tester,
+  ) async {
+    final logoutCompleter = Completer<void>();
+    final fakeAuth = _FakeAuthRepository()
+      ..restoredUser = const AuthUser(
+        email: 'admin@grepiu.com',
+        nickname: '여주관리자',
+        roles: ['ROLE_ADMIN'],
+      )
+      ..logoutCompleter = logoutCompleter;
+    final fakeRepo = _FakeLicenseKeyRepository();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          tokenStorageProvider.overrideWithValue(_FakeTokenStorage()),
+          authRepositoryProvider.overrideWithValue(fakeAuth),
+          licenseKeyRepositoryProvider.overrideWithValue(fakeRepo),
+          appAnalyticsProvider.overrideWithValue(_FakeAppAnalytics()),
+        ],
+        child: const YeojuCycleManagerApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('계정 정보 및 로그아웃'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('로그아웃'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(find.text('로그아웃 중...'), findsOneWidget);
+
+    logoutCompleter.complete();
+    await tester.pumpAndSettle();
+
+    expect(find.text('로그아웃 중...'), findsNothing);
+    expect(find.text('이메일로 로그인'), findsOneWidget);
+  });
+
+  testWidgets('권한 없음 화면 로그아웃 진행 중 로딩 상태를 표시한 뒤 로그인 화면으로 전환한다', (
+    tester,
+  ) async {
+    final logoutCompleter = Completer<void>();
+    final fakeAuth = _FakeAuthRepository()
+      ..restoredUser = const AuthUser(
+        email: 'user@grepiu.com',
+        nickname: '일반사용자',
+        roles: ['USER'],
+      )
+      ..logoutCompleter = logoutCompleter;
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          tokenStorageProvider.overrideWithValue(_FakeTokenStorage()),
+          authRepositoryProvider.overrideWithValue(fakeAuth),
+          appAnalyticsProvider.overrideWithValue(_FakeAppAnalytics()),
+        ],
+        child: const YeojuCycleManagerApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('다른 계정으로 로그인'));
+    await tester.pump();
+
+    expect(find.text('로그아웃 중...'), findsOneWidget);
+
+    logoutCompleter.complete();
+    await tester.pumpAndSettle();
+
+    expect(find.text('이메일로 로그인'), findsOneWidget);
   });
 }
 

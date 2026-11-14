@@ -215,6 +215,7 @@ class _ManagerHomePageState extends ConsumerState<ManagerHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final isLoggingOut = ref.watch(authProvider.select((s) => s.isSubmitting));
     final activeService = _activeLicenseService;
     final isBatchRunning = activeService != null &&
         ref.watch(licenseKeyProvider(activeService)).isBatchRunning;
@@ -225,95 +226,155 @@ class _ManagerHomePageState extends ConsumerState<ManagerHomePage> {
       _ => '판매 통계',
     };
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          children: [
-            const Icon(
-              Icons.pedal_bike_rounded,
-              color: AppColors.primary,
-              size: 21,
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(title, overflow: TextOverflow.ellipsis),
-            ),
-          ],
-        ),
-        actions: [
-          if (activeService != null)
-            IconButton(
-              tooltip: '만료 배치 점검',
-              onPressed: isBatchRunning ? null : _handleExpireBatch,
-              icon: isBatchRunning
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.shield_outlined),
-            ),
-          IconButton(
-            tooltip: '새로고침',
-            onPressed: _handleRefresh,
-            icon: const Icon(Icons.refresh_rounded),
-          ),
-          IconButton(
-            tooltip: '계정 정보 및 로그아웃',
-            onPressed: _openAccountSheet,
-            icon: const Icon(Icons.account_circle_outlined),
-          ),
-        ],
-      ),
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: const [
-          LicenseManagementView(
-            key: ValueKey(LicenseServiceType.miniPos),
-            serviceType: LicenseServiceType.miniPos,
-          ),
-          LicenseManagementView(
-            key: ValueKey(LicenseServiceType.sign),
-            serviceType: LicenseServiceType.sign,
-          ),
-          SalesStatsView(),
-        ],
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedIndex,
-        onDestinationSelected: (index) {
-          setState(() => _selectedIndex = index);
-          if (!ref.read(reviewSandboxProvider)) {
-            final screenName = switch (index) {
-              0 => 'minipos_manage',
-              1 => 'sign_manage',
-              _ => 'sales_statistics',
-            };
-            unawaited(
-              ref.read(appAnalyticsProvider).logScreenView(
-                    screenName: screenName,
+    return PopScope(
+      canPop: !isLoggingOut,
+      child: Stack(
+        children: [
+          Scaffold(
+            appBar: AppBar(
+              title: Row(
+                children: [
+                  const Icon(
+                    Icons.pedal_bike_rounded,
+                    color: AppColors.primary,
+                    size: 21,
                   ),
-            );
-          }
-        },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.vpn_key_outlined),
-            selectedIcon: Icon(Icons.vpn_key_rounded),
-            label: 'MiniPos',
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(title, overflow: TextOverflow.ellipsis),
+                  ),
+                ],
+              ),
+              actions: [
+                if (activeService != null)
+                  IconButton(
+                    tooltip: '만료 배치 점검',
+                    onPressed:
+                        isLoggingOut || isBatchRunning ? null : _handleExpireBatch,
+                    icon: isBatchRunning
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.shield_outlined),
+                  ),
+                IconButton(
+                  tooltip: '새로고침',
+                  onPressed: isLoggingOut ? null : _handleRefresh,
+                  icon: const Icon(Icons.refresh_rounded),
+                ),
+                IconButton(
+                  tooltip: '계정 정보 및 로그아웃',
+                  onPressed: isLoggingOut ? null : _openAccountSheet,
+                  icon: const Icon(Icons.account_circle_outlined),
+                ),
+              ],
+            ),
+            body: IndexedStack(
+              index: _selectedIndex,
+              children: const [
+                LicenseManagementView(
+                  key: ValueKey(LicenseServiceType.miniPos),
+                  serviceType: LicenseServiceType.miniPos,
+                ),
+                LicenseManagementView(
+                  key: ValueKey(LicenseServiceType.sign),
+                  serviceType: LicenseServiceType.sign,
+                ),
+                SalesStatsView(),
+              ],
+            ),
+            bottomNavigationBar: NavigationBar(
+              selectedIndex: _selectedIndex,
+              onDestinationSelected: (index) {
+                setState(() => _selectedIndex = index);
+                if (!ref.read(reviewSandboxProvider)) {
+                  final screenName = switch (index) {
+                    0 => 'minipos_manage',
+                    1 => 'sign_manage',
+                    _ => 'sales_statistics',
+                  };
+                  unawaited(
+                    ref.read(appAnalyticsProvider).logScreenView(
+                          screenName: screenName,
+                        ),
+                  );
+                }
+              },
+              destinations: const [
+                NavigationDestination(
+                  icon: Icon(Icons.vpn_key_outlined),
+                  selectedIcon: Icon(Icons.vpn_key_rounded),
+                  label: 'MiniPos',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.draw_outlined),
+                  selectedIcon: Icon(Icons.draw_rounded),
+                  label: '간편서명',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.bar_chart_outlined),
+                  selectedIcon: Icon(Icons.bar_chart_rounded),
+                  label: '판매통계',
+                ),
+              ],
+            ),
           ),
-          NavigationDestination(
-            icon: Icon(Icons.draw_outlined),
-            selectedIcon: Icon(Icons.draw_rounded),
-            label: '간편서명',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.bar_chart_outlined),
-            selectedIcon: Icon(Icons.bar_chart_rounded),
-            label: '판매통계',
-          ),
+          if (isLoggingOut)
+            const Positioned.fill(
+              child: _LogoutLoadingOverlay(),
+            ),
         ],
       ),
+    );
+  }
+}
+
+/// 로그아웃 처리 중 사용자 조작을 차단하고 진행 상태를 표시하는 전체 화면 오버레이이다.
+class _LogoutLoadingOverlay extends StatelessWidget {
+  const _LogoutLoadingOverlay();
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        ModalBarrier(
+          dismissible: false,
+          color: Colors.black.withValues(alpha: 0.35),
+        ),
+        Center(
+          child: Card(
+            elevation: 6,
+            color: AppColors.surface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 28, vertical: 22),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 28,
+                    height: 28,
+                    child: CircularProgressIndicator(strokeWidth: 2.8),
+                  ),
+                  SizedBox(height: 14),
+                  Text(
+                    '로그아웃 중...',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -56,7 +56,8 @@ class AuthInterceptor extends QueuedInterceptor {
 
     if (statusCode != 401 ||
         alreadyRetried ||
-        _isAuthPublicEndpoint(requestOptions.path)) {
+        _isAuthPublicEndpoint(requestOptions.path) ||
+        _isLogoutEndpoint(requestOptions.path)) {
       handler.next(err);
       return;
     }
@@ -139,5 +140,9 @@ class AuthInterceptor extends QueuedInterceptor {
     return path.contains('/api/v1/auth/login') ||
         path.contains('/api/v1/auth/google-login') ||
         path.contains('/api/v1/auth/refresh');
+  }
+
+  bool _isLogoutEndpoint(String path) {
+    return path.contains('/api/v1/auth/logout');
   }
 }

@@ -169,25 +169,47 @@ class GrepiuAuthRepository implements AuthRepository {
 
   @override
   Future<void> logout() async {
+    String? token;
     try {
-      final token = await _tokenStorage.getAccessToken();
-      if (token != null && token.isNotEmpty) {
-        await _dio.post<dynamic>(
-          '/api/v1/auth/logout',
-          options: Options(headers: {'Authorization': 'Bearer $token'}),
-        );
-      }
+      token = await _tokenStorage.getAccessToken();
     } catch (_) {
-      // 만료된 토큰이어도 로컬 세션 정리는 반드시 진행한다.
-    } finally {
-      await _tokenStorage.clearTokens();
-      try {
-        if (_googleInitFuture != null) {
-          await GoogleSignIn.instance.signOut();
-        }
-      } catch (_) {
-        // Google SDK signOut 실패는 무시한다.
-      }
+      token = null;
+    }
+
+    // 로컬 토큰을 먼저 제거하고, 서버 세션 해제와 Google SDK 정리는 병렬로 짧게 대기한다.
+    await _tokenStorage.clearTokens();
+    await Future.wait<void>([
+      _revokeServerSession(token),
+      _signOutGoogleSdk(),
+    ]);
+  }
+
+  /// 서버 로그아웃 엔드포인트를 호출한다. 지연 시에도 UI 전환이 막히지 않도록 짧은 타임아웃을 사용한다.
+  Future<void> _revokeServerSession(String? token) async {
+    if (token == null || token.isEmpty) return;
+    try {
+      await _dio.post<dynamic>(
+        '/api/v1/auth/logout',
+        options: Options(
+          headers: {'Authorization': 'Bearer $token'},
+          sendTimeout: const Duration(seconds: 3),
+          receiveTimeout: const Duration(seconds: 3),
+        ),
+      );
+    } catch (_) {
+      // 만료된 토큰이거나 네트워크 지연/오류가 발생해도 로그아웃을 계속 진행한다.
+    }
+  }
+
+  /// Google SDK 인증 세션을 정리한다. 기기 Credential Manager(Samsung Pass 등) 응답 지연에 대비해 제한 시간을 둔다.
+  Future<void> _signOutGoogleSdk() async {
+    if (_googleInitFuture == null) return;
+    try {
+      await GoogleSignIn.instance.signOut().timeout(
+        const Duration(seconds: 2),
+      );
+    } catch (_) {
+      // Google SDK signOut 실패 또는 타임아웃은 무시한다.
     }
   }
 
