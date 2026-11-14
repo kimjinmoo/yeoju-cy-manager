@@ -99,6 +99,7 @@ class GrepiuAuthRepository implements AuthRepository {
       final response = await _dio.post<Map<String, dynamic>>(
         '/api/v1/auth/google-login',
         data: {'idToken': idToken},
+        options: Options(headers: {'X-Client-Type': 'mobile'}),
       );
 
       final tokens = _extractTokens(response.data);
@@ -114,8 +115,11 @@ class GrepiuAuthRepository implements AuthRepository {
         // 사용자가 직접 로그인 창을 닫은 경우 오류 대신 취소 처리한다.
         return null;
       }
+      final detail = e.description != null && e.description!.trim().isNotEmpty
+          ? ' (${e.code.name}: ${e.description})'
+          : ' (${e.code.name})';
       throw ApiException(
-        message: 'Google 로그인에 실패했습니다. (${e.code.name})',
+        message: 'Google 로그인에 실패했습니다.$detail',
       );
     } on DioException catch (e) {
       throw ApiException.fromDio(
