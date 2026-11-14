@@ -10,6 +10,7 @@ import 'package:yeoju_cy_manager/features/auth/domain/auth_user.dart';
 import 'package:yeoju_cy_manager/features/license_keys/data/license_key_repository.dart';
 import 'package:yeoju_cy_manager/features/license_keys/domain/license_key_models.dart';
 import 'package:yeoju_cy_manager/features/license_keys/domain/license_service_type.dart';
+import 'package:yeoju_cy_manager/features/license_keys/presentation/widgets/issue_key_sheet.dart';
 
 class _FakeTokenStorage implements TokenStorage {
   String? _accessToken;
@@ -236,6 +237,29 @@ Widget _buildTestApp({
 }
 
 void main() {
+  testWidgets('초기 구동 시 애니메이션 스플래시 화면을 표시한 뒤 로그인 화면으로 전환한다', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _buildTestApp(
+        tokenStorage: _FakeTokenStorage(),
+        authRepository: _FakeAuthRepository(),
+        licenseRepository: _FakeLicenseKeyRepository(),
+      ),
+    );
+
+    // 초기 마이크로태스크 및 스플래시 인트로 애니메이션 진행 확인
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text('여주자전거여행'), findsOneWidget);
+    expect(find.text('MANAGER · LICENSE & SIGN'), findsOneWidget);
+    expect(find.text('인증 세션을 확인하고 있습니다...'), findsOneWidget);
+
+    // 최소 스플래시 시간 경과 후 로그인 화면으로 자동 전환 확인
+    await tester.pumpAndSettle();
+    expect(find.text('관리자 로그인'), findsOneWidget);
+    expect(find.text('Google 계정으로 로그인'), findsOneWidget);
+  });
+
   testWidgets('ID/PW 관리자 로그인 성공 후 MiniPos·간편서명·판매통계 관리 화면으로 이동한다', (
     tester,
   ) async {
@@ -365,5 +389,50 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('이메일 또는 비밀번호가 올바르지 않습니다.'), findsOneWidget);
+  });
+
+  testWidgets('시디키 발급 바텀시트는 판매키와 테스트키 전환 시에도 높이가 일정하게 유지된다', (
+    tester,
+  ) async {
+    final authRepo = _FakeAuthRepository()
+      ..emailUser = const AuthUser(
+        email: 'admin@grepiu.com',
+        nickname: '여주관리자',
+        roles: ['ROLE_ADMIN'],
+      );
+
+    await tester.pumpWidget(
+      _buildTestApp(
+        tokenStorage: _FakeTokenStorage(),
+        authRepository: authRepo,
+        licenseRepository: _FakeLicenseKeyRepository(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byType(TextFormField).at(0),
+      'admin@grepiu.com',
+    );
+    await tester.enterText(find.byType(TextFormField).at(1), 'secret123!');
+    await tester.ensureVisible(find.text('이메일로 로그인'));
+    await tester.tap(find.text('이메일로 로그인'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('시디키 발급'));
+    await tester.pumpAndSettle();
+
+    final saleHeight = tester.getSize(find.byType(IssueKeySheet)).height;
+
+    await tester.tap(find.text('테스트키 (TEST)'));
+    await tester.pumpAndSettle();
+    final testHeight = tester.getSize(find.byType(IssueKeySheet)).height;
+
+    await tester.tap(find.text('판매키 (SALE)'));
+    await tester.pumpAndSettle();
+    final backToSaleHeight = tester.getSize(find.byType(IssueKeySheet)).height;
+
+    expect(testHeight, saleHeight);
+    expect(backToSaleHeight, saleHeight);
   });
 }

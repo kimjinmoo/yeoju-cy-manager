@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -61,6 +63,18 @@ class _IssueKeySheetState extends ConsumerState<IssueKeySheet> {
     });
   }
 
+  /// 판매키·테스트키 및 사용 기간 옵션 전환 시에도 시트 높이가 흔들리지 않도록 일관된 높이를 계산한다.
+  double _computeSheetHeight(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    final screenHeight = mediaQuery.size.height;
+    final availableHeight = math.max(
+      320.0,
+      screenHeight - mediaQuery.padding.top - mediaQuery.viewInsets.bottom - 24,
+    );
+    final preferredHeight = math.min(screenHeight * 0.84, 700.0);
+    return math.min(preferredHeight, availableHeight);
+  }
+
   Future<void> _submit() async {
     final validDays = _isPermanent
         ? 0
@@ -121,45 +135,102 @@ class _IssueKeySheetState extends ConsumerState<IssueKeySheet> {
   @override
   Widget build(BuildContext context) {
     final webHost = ref.watch(appConfigProvider).webHost;
-    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    final sheetHeight = _computeSheetHeight(context);
 
-    return SafeArea(
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(20, 16, 20, 20 + bottomInset),
-        child: SingleChildScrollView(
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottomInset),
+      child: SizedBox(
+        height: sheetHeight,
+        child: SafeArea(
+          top: false,
           child: Column(
-            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      _issuedResult != null
-                          ? '시디키 발급 완료'
-                          : '${widget.serviceType.displayLabel} 시디키 발급',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
+              const SizedBox(height: 10),
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.border,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 10, 12, 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        _issuedResult != null
+                            ? '시디키 발급 완료'
+                            : '${widget.serviceType.displayLabel} 시디키 발급',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close),
-                  ),
-                ],
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 12),
-              if (_issuedResult != null)
-                _buildResultView(_issuedResult!, webHost)
-              else
-                _buildFormView(),
+              const Divider(height: 1, color: AppColors.borderSubtle),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+                  child: _issuedResult != null
+                      ? _buildResultView(_issuedResult!, webHost)
+                      : _buildFormView(),
+                ),
+              ),
+              _buildBottomActionBar(),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  /// 시트 하단에 고정되는 액션 버튼 영역을 렌더링한다.
+  Widget _buildBottomActionBar() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(top: BorderSide(color: AppColors.borderSubtle)),
+      ),
+      child: _issuedResult != null
+          ? FilledButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('완료'),
+            )
+          : Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _isSubmitting
+                        ? null
+                        : () => Navigator.of(context).pop(),
+                    child: const Text('취소'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  flex: 2,
+                  child: FilledButton(
+                    onPressed: _isSubmitting ? null : _submit,
+                    child: Text(_isSubmitting ? '발급 중...' : '시디키 발급하기'),
+                  ),
+                ),
+              ],
+            ),
     );
   }
 
@@ -193,21 +264,23 @@ class _IssueKeySheetState extends ConsumerState<IssueKeySheet> {
           onChanged: (_) => setState(() {}),
           decoration: const InputDecoration(hintText: '예: 여주 본점, 스마트스토어'),
         ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 6,
-          runSpacing: 6,
-          children: widget.knownSalesLocations.map((loc) {
-            final selected = selectedLocation == loc;
-            return ChoiceChip(
-              label: Text(loc, style: const TextStyle(fontSize: 12)),
-              selected: selected,
-              onSelected: (_) {
-                setState(() => _salesLocationController.text = loc);
-              },
-            );
-          }).toList(),
-        ),
+        if (widget.knownSalesLocations.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: widget.knownSalesLocations.map((loc) {
+              final selected = selectedLocation == loc;
+              return ChoiceChip(
+                label: Text(loc, style: const TextStyle(fontSize: 12)),
+                selected: selected,
+                onSelected: (_) {
+                  setState(() => _salesLocationController.text = loc);
+                },
+              );
+            }).toList(),
+          ),
+        ],
         const SizedBox(height: 16),
         const _SectionLabel('사용 기간 (유효 기간)'),
         SegmentedButton<bool>(
@@ -218,46 +291,61 @@ class _IssueKeySheetState extends ConsumerState<IssueKeySheet> {
           selected: {_isPermanent},
           onSelectionChanged: (set) => setState(() => _isPermanent = set.first),
         ),
-        if (!_isPermanent) ...[
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              SizedBox(
-                width: 120,
-                child: TextField(
-                  controller: _validDaysController,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(suffixText: '일'),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
+          alignment: Alignment.topCenter,
+          child: _isPermanent
+              ? const SizedBox.shrink()
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        SizedBox(
+                          width: 120,
+                          child: TextField(
+                            controller: _validDaysController,
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                            ],
+                            onChanged: (_) => setState(() {}),
+                            decoration: const InputDecoration(suffixText: '일'),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        const Text(
+                          '일 (1~3650)',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: licensePeriodPresets.map((days) {
+                        return ChoiceChip(
+                          label: Text(
+                            '$days일',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          selected: currentDays == days,
+                          onSelected: (_) {
+                            setState(() => _validDaysController.text = '$days');
+                          },
+                        );
+                      }).toList(),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(width: 10),
-              const Text(
-                '일 (1~3650)',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: licensePeriodPresets.map((days) {
-              return ChoiceChip(
-                label: Text('$days일', style: const TextStyle(fontSize: 12)),
-                selected: currentDays == days,
-                onSelected: (_) {
-                  setState(() => _validDaysController.text = '$days');
-                },
-              );
-            }).toList(),
-          ),
-        ],
+        ),
         const SizedBox(height: 8),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
@@ -314,26 +402,6 @@ class _IssueKeySheetState extends ConsumerState<IssueKeySheet> {
           decoration: const InputDecoration(
             hintText: '구매자명, 연락처, 계약 메모 등을 입력하세요',
           ),
-        ),
-        const SizedBox(height: 22),
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton(
-                onPressed:
-                    _isSubmitting ? null : () => Navigator.of(context).pop(),
-                child: const Text('취소'),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              flex: 2,
-              child: FilledButton(
-                onPressed: _isSubmitting ? null : _submit,
-                child: Text(_isSubmitting ? '발급 중...' : '시디키 발급하기'),
-              ),
-            ),
-          ],
         ),
       ],
     );
@@ -396,79 +464,72 @@ class _IssueKeySheetState extends ConsumerState<IssueKeySheet> {
           ),
         ),
         const SizedBox(height: 12),
-        ConstrainedBox(
-          constraints: const BoxConstraints(maxHeight: 280),
-          child: ListView.separated(
-            shrinkWrap: true,
-            itemCount: created.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 8),
-            itemBuilder: (context, index) {
-              final item = created[index];
-              final deliveryUrl = widget.serviceType.buildDeliveryUrl(
-                webHost: webHost,
-                key: item.key,
-              );
-              return Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceSubtle,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppColors.borderSubtle),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        item.key,
-                        style: const TextStyle(
-                          fontFamily: 'monospace',
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13.5,
-                        ),
+        ListView.separated(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: created.length,
+          separatorBuilder: (_, _) => const SizedBox(height: 8),
+          itemBuilder: (context, index) {
+            final item = created[index];
+            final deliveryUrl = widget.serviceType.buildDeliveryUrl(
+              webHost: webHost,
+              key: item.key,
+            );
+            return Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
+              ),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceSubtle,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.borderSubtle),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      item.key,
+                      style: const TextStyle(
+                        fontFamily: 'monospace',
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13.5,
                       ),
                     ),
-                    IconButton(
-                      tooltip: '키 복사',
-                      onPressed: () async {
-                        await Clipboard.setData(ClipboardData(text: item.key));
-                        if (context.mounted) {
-                          AppFeedback.showSuccess(
-                            context,
-                            '${item.key} 복사 완료',
-                          );
-                        }
-                      },
-                      icon: const Icon(Icons.copy, size: 18),
-                    ),
-                    IconButton(
-                      tooltip: '전달 URL 공유',
-                      onPressed: () async {
-                        await SharePlus.instance.share(
-                          ShareParams(
-                            text: deliveryUrl,
-                            subject: '${widget.serviceType.shortLabel} 시디키 전달',
-                          ),
+                  ),
+                  IconButton(
+                    tooltip: '키 복사',
+                    onPressed: () async {
+                      await Clipboard.setData(ClipboardData(text: item.key));
+                      if (context.mounted) {
+                        AppFeedback.showSuccess(
+                          context,
+                          '${item.key} 복사 완료',
                         );
-                      },
-                      icon: const Icon(
-                        Icons.share_outlined,
-                        size: 18,
-                        color: AppColors.warning,
-                      ),
+                      }
+                    },
+                    icon: const Icon(Icons.copy, size: 18),
+                  ),
+                  IconButton(
+                    tooltip: '전달 URL 공유',
+                    onPressed: () async {
+                      await SharePlus.instance.share(
+                        ShareParams(
+                          text: deliveryUrl,
+                          subject: '${widget.serviceType.shortLabel} 시디키 전달',
+                        ),
+                      );
+                    },
+                    icon: const Icon(
+                      Icons.share_outlined,
+                      size: 18,
+                      color: AppColors.warning,
                     ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ),
-        const SizedBox(height: 16),
-        FilledButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('완료'),
+                  ),
+                ],
+              ),
+            );
+          },
         ),
       ],
     );

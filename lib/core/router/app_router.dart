@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -66,20 +66,51 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(
         path: AppRoutes.splash,
-        builder: (context, state) => const SplashPage(),
+        pageBuilder: (context, state) => _fadePage(
+          state: state,
+          child: const SplashPage(),
+        ),
       ),
       GoRoute(
         path: AppRoutes.login,
-        builder: (context, state) => const LoginPage(),
+        pageBuilder: (context, state) => _fadePage(
+          state: state,
+          child: const LoginPage(),
+        ),
       ),
       GoRoute(
         path: AppRoutes.unauthorized,
-        builder: (context, state) => const UnauthorizedPage(),
+        pageBuilder: (context, state) => _fadePage(
+          state: state,
+          child: const UnauthorizedPage(),
+        ),
       ),
       GoRoute(
         path: AppRoutes.home,
-        builder: (context, state) => const ManagerHomePage(),
+        pageBuilder: (context, state) => _fadePage(
+          state: state,
+          child: const ManagerHomePage(),
+        ),
       ),
     ],
   );
 });
+
+/// 스플래시 및 인증 상태 전환 시 부드러운 페이드 효과를 적용하는 페이지 빌더이다.
+CustomTransitionPage<void> _fadePage({
+  required GoRouterState state,
+  required Widget child,
+}) {
+  return CustomTransitionPage<void>(
+    key: state.pageKey,
+    transitionDuration: const Duration(milliseconds: 320),
+    reverseTransitionDuration: const Duration(milliseconds: 220),
+    child: child,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      return FadeTransition(
+        opacity: CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+        child: child,
+      );
+    },
+  );
+}

@@ -25,9 +25,15 @@ class AuthNotifier extends Notifier<AuthState> {
   }
 
   Future<void> _bootstrapSession() async {
+    final minDuration = ref.read(splashMinDurationProvider);
     await _restoreSavedServerPreference();
     final repo = ref.read(authRepositoryProvider);
-    final user = await repo.restoreSession();
+    // 스플래시 브랜드 애니메이션이 지나치게 빠르게 사라지지 않도록 최소 노출 시간을 보장한다.
+    final results = await Future.wait<dynamic>([
+      repo.restoreSession(),
+      if (minDuration > Duration.zero) Future<void>.delayed(minDuration),
+    ]);
+    final user = results.first as AuthUser?;
     _applyAuthenticatedUser(user);
   }
 
@@ -146,6 +152,14 @@ class AuthNotifier extends Notifier<AuthState> {
     );
   }
 }
+
+/// 스플래시 화면 최소 표시 시간 Provider이다.
+///
+/// 앱 초기 구동 시 브랜드 모션이 자연스럽게 보이도록 기본 1.6초를 유지하며,
+/// 위젯 테스트에서 필요 시 오버라이드할 수 있다.
+final splashMinDurationProvider = Provider<Duration>(
+  (ref) => const Duration(milliseconds: 1600),
+);
 
 /// 앱 전역 인증 상태를 제공하는 Riverpod Provider이다.
 final authProvider = NotifierProvider<AuthNotifier, AuthState>(

@@ -3,9 +3,9 @@
     "short_name": "여주자전거여행-관리자",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#F5F5F7",
+    "theme_color": "#0071E3",
+    "description": "여주자전거여행 MiniPos 시디키 및 간편서명키 통합 관리 앱",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

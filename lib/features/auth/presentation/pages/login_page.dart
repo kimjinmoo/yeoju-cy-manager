@@ -415,23 +415,33 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     return Column(
       children: [
         Container(
-          width: 60,
-          height: 60,
+          width: 68,
+          height: 68,
           decoration: BoxDecoration(
-            color: AppColors.primary,
             borderRadius: BorderRadius.circular(18),
             boxShadow: [
               BoxShadow(
                 color: AppColors.primary.withValues(alpha: 0.22),
-                blurRadius: 16,
-                offset: const Offset(0, 6),
+                blurRadius: 18,
+                offset: const Offset(0, 7),
               ),
             ],
           ),
-          child: const Icon(
-            Icons.pedal_bike_rounded,
-            color: Colors.white,
-            size: 32,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(18),
+            child: Image.asset(
+              'assets/images/app_icon_rounded.png',
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => Container(
+                color: AppColors.primary,
+                alignment: Alignment.center,
+                child: const Icon(
+                  Icons.pedal_bike_rounded,
+                  color: Colors.white,
+                  size: 34,
+                ),
+              ),
+            ),
           ),
         ),
         const SizedBox(height: 14),
