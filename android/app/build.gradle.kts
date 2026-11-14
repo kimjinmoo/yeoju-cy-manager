@@ -32,6 +32,12 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+
+    lint {
+        // Windows에서 Flutter CLI가 자동 생성하는 local.properties 경로의 콜론(:) 이스케이프 Lint 오탐을 무시한다.
+        disable += "PropertyEscape"
+        checkReleaseBuilds = false
+    }
 }
 
 kotlin {

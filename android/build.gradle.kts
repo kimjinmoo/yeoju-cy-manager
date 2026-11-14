@@ -21,6 +21,17 @@ subprojects {
         val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
         project.layout.buildDirectory.value(newSubprojectBuildDir)
     }
+
+    // Pub Cache의 외부 Android 라이브러리 플러그인(예: flutter_secure_storage) 내부 Lint 오류로
+    // 프로젝트 전체 빌드가 중단되지 않도록 라이브러리 모듈의 Lint 오류 중단을 비활성화한다.
+    plugins.withId("com.android.library") {
+        extensions.configure(com.android.build.api.dsl.LibraryExtension::class.java) {
+            lint {
+                abortOnError = false
+                checkReleaseBuilds = false
+            }
+        }
+    }
 }
 subprojects {
     project.evaluationDependsOn(":app")
