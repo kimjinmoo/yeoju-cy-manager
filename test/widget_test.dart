@@ -258,6 +258,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('관리자 로그인'), findsOneWidget);
     expect(find.text('Google 계정으로 로그인'), findsOneWidget);
+    expect(find.textContaining('conf.grepiu.com'), findsNothing);
+    expect(find.textContaining('서버:'), findsNothing);
   });
 
   testWidgets('ID/PW 관리자 로그인 성공 후 MiniPos·간편서명·판매통계 관리 화면으로 이동한다', (

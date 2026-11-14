@@ -194,7 +194,7 @@ MiniPos(`/v1/mini-pos`)와 간편서명(`/v1/sign`)은 동일한 키 스키마�
 | `WEB_HOST` | 시디키 전달 URL 호스트 | `https://www.grepiu.com` (`local` 시 `http://localhost:3000`) |
 | `GOOGLE_SERVER_CLIENT_ID` | Google OAuth2 Web Client ID (`idToken` 검증용) | 서버 프로필별 Client ID |
 
-- 로그인 화면에서 사용자가 운영/로컬/Android 에뮬레이터/사용자 지정 서버 URL을 직접 선택·전환할 수 있도록 지원합니다.
+- 보안 및 스토어 심사 정책상 로그인 UI에는 API 서버 URL(`conf.grepiu.com` 등)이나 서버 선택 버튼을 노출하지 않으며, 빌드/실행 시 `--dart-define`으로 환경을 주입합니다.
 
 ---
 

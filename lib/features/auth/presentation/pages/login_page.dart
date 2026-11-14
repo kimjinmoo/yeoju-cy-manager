@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/config/app_config.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../providers/auth_provider.dart';
 
@@ -42,178 +41,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     await ref.read(authProvider.notifier).loginWithGoogle();
   }
 
-  Future<void> _openServerSettingsSheet() async {
-    final currentConfig = ref.read(appConfigProvider);
-    final customController = TextEditingController(
-      text: currentConfig.customApiBaseUrl ?? currentConfig.apiBaseUrl,
-    );
-
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (sheetContext) {
-        return Padding(
-          padding: EdgeInsets.fromLTRB(
-            20,
-            20,
-            20,
-            20 + MediaQuery.of(sheetContext).viewInsets.bottom,
-          ),
-          child: Consumer(
-            builder: (context, ref, _) {
-              final config = ref.watch(appConfigProvider);
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        '연결 서버 환경 설정',
-                        style: TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: () => Navigator.of(sheetContext).pop(),
-                        icon: const Icon(Icons.close),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    '로컬 테스트 또는 운영 서버에 맞게 API 엔드포인트를 선택하세요.',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  for (final env in ServerEnvironment.values)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(12),
-                        onTap: () async {
-                          await ref
-                              .read(authProvider.notifier)
-                              .switchServerEnvironment(env);
-                          customController.text = env.apiBaseUrl;
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 12,
-                          ),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            color: config.customApiBaseUrl == null &&
-                                    config.environment == env
-                                ? AppColors.primary.withValues(alpha: 0.08)
-                                : AppColors.surfaceSubtle,
-                            border: Border.all(
-                              color: config.customApiBaseUrl == null &&
-                                      config.environment == env
-                                  ? AppColors.primary
-                                  : AppColors.border,
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                config.customApiBaseUrl == null &&
-                                        config.environment == env
-                                    ? Icons.radio_button_checked
-                                    : Icons.radio_button_off,
-                                size: 18,
-                                color: config.customApiBaseUrl == null &&
-                                        config.environment == env
-                                    ? AppColors.primary
-                                    : AppColors.textMuted,
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      env.label,
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    Text(
-                                      env.apiBaseUrl,
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        color: AppColors.textMuted,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    '직접 URL 입력',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: customController,
-                          decoration: const InputDecoration(
-                            hintText: 'http://192.168.0.10:8010',
-                          ),
-                          keyboardType: TextInputType.url,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      FilledButton(
-                        onPressed: () async {
-                          await ref
-                              .read(authProvider.notifier)
-                              .setCustomServerUrl(customController.text);
-                          if (sheetContext.mounted) {
-                            Navigator.of(sheetContext).pop();
-                          }
-                        },
-                        child: const Text('적용'),
-                      ),
-                    ],
-                  ),
-                ],
-              );
-            },
-          ),
-        );
-      },
-    );
-
-    customController.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
-    final config = ref.watch(appConfigProvider);
     final isLoading = authState.isSubmitting;
 
     return Scaffold(
@@ -379,25 +209,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                               ),
                             ),
                           ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Center(
-                    child: TextButton.icon(
-                      onPressed: isLoading ? null : _openServerSettingsSheet,
-                      icon: const Icon(
-                        Icons.dns_outlined,
-                        size: 16,
-                        color: AppColors.textSecondary,
-                      ),
-                      label: Text(
-                        '서버: ${config.apiBaseUrl}',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textSecondary,
-                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),

@@ -479,9 +479,14 @@ class _SalesBarChartPainter extends CustomPainter {
         );
       }
 
-      // X축 날짜 라벨은 겹침 방지를 위해 일정 간격으로만 표시한다.
+      // X축 날짜 라벨은 겹침 방지를 위해 일정 간격으로만 표시하고 마지막 라벨과 너무 가까우면 생략한다.
       final step = math.max(1, (points.length / 5).ceil());
-      if (i == 0 || i == points.length - 1 || i % step == 0) {
+      final distanceToLast = (points.length - 1 - i) * slotWidth;
+      final shouldShowTick =
+          i == 0 ||
+          i == points.length - 1 ||
+          (i % step == 0 && distanceToLast >= 40);
+      if (shouldShowTick) {
         final shortDate = p.date.length >= 10 ? p.date.substring(5) : p.date;
         final tp = TextPainter(
           text: TextSpan(

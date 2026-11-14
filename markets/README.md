@@ -19,6 +19,21 @@ markets/
     ├── master_icon_1024x1024.png          # 사각 마스터 원본 (1024×1024, 투명 없음)
     ├── preview_squircle_1024x1024.png     # 라운드(Squircle) 미리보기 아이콘 (1024×1024 투명 PNG)
     └── brand_badge_512x512.png            # 웹·문서·소개 페이지용 라운드 배지 (512×512 투명 PNG)
+└── screenshots/
+    ├── phone/                             # 스마트폰(1080×2400) 스토어 등록용 스크린샷 6종
+    │   ├── 01_splash.png
+    │   ├── 02_login.png
+    │   ├── 03_minipos_keys.png
+    │   ├── 04_issue_sheet.png
+    │   ├── 05_sign_keys.png
+    │   └── 06_sales_stats.png
+    └── tablet/                            # 태블릿(2560×1600) 스토어 등록용 스크린샷 6종
+        ├── 01_splash.png
+        ├── 02_login.png
+        ├── 03_minipos_keys.png
+        ├── 04_issue_sheet.png
+        ├── 05_sign_keys.png
+        └── 06_sales_stats.png
 ```
 
 ---
